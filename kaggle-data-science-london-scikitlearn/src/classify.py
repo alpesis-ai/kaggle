@@ -1,0 +1,199 @@
+"""
+Project: Data Science London + Scikit-learn
+
+Author: Kelly Chan
+Date: June 5 2014
+
+Topic: Classifications - master
+"""
+
+"""
+Function Tree
+
+- chooseDataset
+     |------ loadData
+
+- chooseAlgorithms
+     |------ createDecisionTree
+     |------ createRandomForest
+     |------ createExtraTree
+     |------ createAdaBoost
+
+"""
+
+rawPath = "G:/vimFiles/python/kaggle/201406-skLondon/data/"
+dataPath = "G:/vimFiles/python/kaggle/201406-skLondon/src/outputs/data/"
+outPath = "G:/vimFiles/python/kaggle/201406-skLondon/src/outputs/results/"
+
+import numpy as np
+import pandas as pd
+
+from sklearn import decomposition
+from sklearn import preprocessing
+
+from sklearn import grid_search
+from sklearn import cross_validation as cv
+from sklearn.cross_validation import StratifiedKFold
+
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.ensemble import AdaBoostClassifier
+
+def loadData(datafile):
+    return pd.read_csv(datafile, header=None)
+
+def decomPCA(train, test):
+    pca = decomposition.PCA(n_components=12, whiten=True)
+    train = pca.fit_transform(train)
+    test = pca.transform(test)
+    return train, test
+
+def normalize(train, test):
+    norm = preprocessing.Normalizer()
+    train = norm.fit_transform(train)
+    test = norm.transform(test)
+    return train, test
+
+def createSVM():
+    clf = SVC()
+    return clf
+
+def createKNN():
+    clf = KNeighborsClassifier(n_neighbors=13,algorithm='kd_tree',weights='uniform',p=1)
+    return clf
+
+def createDecisionTree():
+    clf = DecisionTreeClassifier(max_depth=None, min_samples_split=1, random_state=0)
+    return clf
+
+def createRandomForest():
+    clf = RandomForestClassifier(n_estimators=500, max_depth=None, min_samples_split=1, random_state=0)
+    return clf
+
+def createExtraTree():
+    clf = ExtraTreesClassifier(n_estimators=500, max_depth=None, min_samples_split=1, random_state=0)
+    return clf
+
+def createAdaBoost():
+    dt = DecisionTreeClassifier(max_depth=None, min_samples_split=1, random_state=0)
+    clf = AdaBoostClassifier(dt, n_estimators=300)
+    return clf
+
+def classify(clf, train, target, test, filePath):
+
+    clf.fit(train, target)
+
+    with open(filePath, "wb") as outfile:
+        outfile.write("Id,Solution\n")
+        for index, value in enumerate(list(clf.predict(test))):
+            outfile.write("%s,%s\n" % (index+1, value))
+
+def classifyKFold(clf, train, target, test, filePath):
+
+    c_range = 10.0 ** np.arange(6.5,7.5,.25)
+    gamma_range = 10.0 ** np.arange(-1.5,0.5,.25)
+    params = [{'kernel': ['rbf'], 'gamma': gamma_range, 'C': c_range}]
+
+    cvk = cv.StratifiedKFold(target, k=5)
+
+    kclf = grid_search.GridSearchCV(clf, param_grid=params, cv=cvk)
+
+    kclf.fit(train, target)
+
+    with open(filePath, "wb") as outfile:
+        outfile.write("Id,Solution\n")
+        for index, value in enumerate(list(kclf.predict(test))):
+            outfile.write("%s,%s\n" % (index+1, value))
+
+
+def chooseDataset(dataset):
+    if dataset == 1:
+        train = loadData(rawPath + "train.csv")
+        test = loadData(rawPath + "test.csv")
+    elif dataset == 2:
+        train = loadData(dataPath + "train.csv")
+        test = loadData(dataPath + "test.csv")
+    return train, test
+
+def chooseAlgorithms(algo, train, test, target):
+
+    if algo == 0:
+
+        clf = createDecisionTree()
+        classify(clf, train, target, test, outPath+"submission-decisiontree.csv")        
+
+        clf = createRandomForest()
+        classify(clf, train, target, test, outPath+"submission-randomforest.csv")
+
+        clf = createExtraTree()
+        classify(clf, train, target, test, outPath+"submission-extratree.csv")
+
+        clf = createAdaBoost()
+        classify(clf, train, target, test, outPath+"submission-adaboost.csv")
+
+        clf = createSVM()
+        classify(clf, train, target, test, outPath+"submission-svm.csv")
+
+    elif algo == 1:
+        clf = createDecisionTree()
+        classify(clf, train, target, test, outPath+"submission-decisiontree.csv")
+
+    elif algo == 2:
+        clf = createRandomForest()
+        classify(clf, train, target, test, outPath+"submission-randomforest.csv")
+    
+    elif algo == 3:
+        clf = createExtraTree()
+        classify(clf, train, target, test, outPath+"submission-extratree.csv")
+
+    elif algo == 4:
+        clf = createAdaBoost()
+        classify(clf, train, target, test, outPath+"submission-adaboost.csv")
+
+    elif algo == 5:
+        clf = createSVM()
+        classify(clf, train, target, test, outPath+"submission-svm.csv")
+
+    elif algo == 6:
+        clf = createKNN()
+        train, test = normalize(train, test)
+        classify(clf, train, target, test, outPath+"submission-knn.csv")
+
+
+def main():
+
+    """ selections: dataset and algorithms
+
+    dataset:
+    - 1: raw data - Wilderness_Area, Soil_Type are binary codes
+    - 2: punched data - Wilderness_Area, Soil_Type are combined
+
+    algo: algorithms
+    - 0: all
+    - 1: decision tree
+    - 2: random forest
+    - 3: extra tree
+    - 4: adaboost
+    - 5: svm
+    - 6: knn
+    """
+    dataset = 1
+    algo = 6
+
+    train, test = chooseDataset(dataset)
+    labels = loadData(rawPath + "trainLabels.csv")
+
+    train, test = decomPCA(train, test)
+
+    chooseAlgorithms(algo, train, test, labels)
+
+
+
+if __name__ == '__main__':
+    main()
+
+
